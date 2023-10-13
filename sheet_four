@@ -1,0 +1,79 @@
+from airflow import DAG
+from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.operators.python_operator import PythonOperator
+from airflow.utils.dates import days_ago
+
+# Define the default_args for the DAG
+default_args = {
+    'owner': 'airflow',
+    'start_date': days_ago(1),
+    'retries': 1,
+}
+
+# Create the DAG instance
+dag = DAG(
+    'postgres_query_dag',
+    default_args=default_args,
+    schedule_interval=None,  # You can set the schedule_interval as needed
+    catchup=False,  # Set to False if you don't want historical runs to run
+)
+
+# Define a PostgreSQL connection ID from your Airflow Connections
+postgres_conn_id = 'your_postgres_connection_id'
+
+# SQL query to select data from dag_run table
+sql_query = "SELECT * FROM dag_run LIMIT 5;"
+
+# Python function to execute the SQL query and convert the result to a list of dictionaries
+def execute_query_and_convert_result(**kwargs):
+    from airflow.hooks.postgres_hook import PostgresHook
+
+    pg_hook = PostgresHook(postgres_conn_id=postgres_conn_id)
+    connection = pg_hook.get_conn()
+    cursor = connection.cursor()
+    cursor.execute(sql_query)
+    result = cursor.fetchall()
+    cursor.close()
+    connection.close()
+
+    # Convert the result to a list of dictionaries
+    result_dict_list = [dict(row) for row in result]
+
+    return result_dict_list
+
+# PostgresOperator to execute the SQL query
+execute_sql = PostgresOperator(
+    task_id='execute_sql',
+    postgres_conn_id=postgres_conn_id,
+    sql=sql_query,
+    dag=dag,
+)
+
+# PythonOperator to execute the query and convert the result
+convert_result = PythonOperator(
+    task_id='convert_result',
+    python_callable=execute_query_and_convert_result,
+    provide_context=True,
+    dag=dag,
+)
+
+# PythonOperator to print the converted result
+def print_result(**kwargs):
+    ti = kwargs['ti']
+    result = ti.xcom_pull(task_ids='convert_result')
+    print("Query Result:")
+    for row in result:
+        print(row)
+
+print_query_result = PythonOperator(
+    task_id='print_query_result',
+    python_callable=print_result,
+    provide_context=True,
+    dag=dag,
+)
+
+# Set the task dependencies
+execute_sql >> convert_result >> print_query_result
+
+if __name__ == "__main__":
+    dag.cli()
