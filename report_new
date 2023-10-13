@@ -21,7 +21,7 @@ dag = DAG(
 # Define a PostgreSQL connection ID from your Airflow Connections
 postgres_conn_id = 'your_postgres_connection_id'
 
-# SQL query to select data from dag_run table
+# SQL query to select data from the dag_run table
 sql_query = "SELECT * FROM dag_run LIMIT 5;"
 
 # PostgresOperator to execute the SQL query
@@ -32,6 +32,11 @@ execute_sql = PostgresOperator(
     dag=dag,
 )
 
+# Python function to print the result
+def print_result(**context):
+    ti = context['ti']
+    result = ti.xcom_pull(task_ids='execute_sql')
+    print(result)
 
 # PythonOperator to print the result
 print_query_result = PythonOperator(
@@ -42,6 +47,4 @@ print_query_result = PythonOperator(
 )
 
 # Set the task dependencies
-execute_sql 
-
-
+execute_sql >> print_query_result
