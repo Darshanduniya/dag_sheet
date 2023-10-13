@@ -1,3 +1,4 @@
+import logging
 from airflow import DAG
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.operators.python_operator import PythonOperator
@@ -23,9 +24,15 @@ postgres_conn_id = 'your_postgres_connection_id'
 
 # Define a Python function to execute the query and print the result
 def execute_query_and_print_result(**context):
+    # Log that we are connecting to the database
+    logging.info("Connecting to the database")
+
     # SQL query to select data from dag_run table
     sql_query = "SELECT * FROM dag_run LIMIT 5;"
-    
+
+    # Log that the query is being executed
+    logging.info("Executing query")
+
     # Execute the SQL query
     execute_sql = PostgresOperator(
         task_id='execute_sql',
@@ -33,10 +40,10 @@ def execute_query_and_print_result(**context):
         sql=sql_query,
         dag=dag,
     )
-    
+
     # Execute the query
     execute_sql.execute(context)
-    
+
     # Fetch and print the result
     result = execute_sql.xcom_pull(context=context, key=None)
     print(result)
