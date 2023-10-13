@@ -1,0 +1,40 @@
+from airflow import DAG
+from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.utils.dates import days_ago
+import logging
+
+# Define the default_args for the DAG
+default_args = {
+  'owner': 'airflow',
+  'start_date': days_ago(1),
+  'retries': 1,
+}
+
+# Create the DAG instance
+dag = DAG(
+  'postgres_query_dag',
+  default_args=default_args,
+  schedule_interval=None, # You can set the schedule_interval as needed
+  catchup=False, # Set to False if you don't want historical runs to run
+)
+
+# Define a PostgreSQL connection ID from your Airflow Connections
+postgres_conn_id = 'your_postgres_connection_id'
+
+# SQL query to select data from dag_run table
+sql_query = "SELECT * FROM dag_run LIMIT 5;"
+
+# PostgresOperator to execute the SQL query
+execute_sql = PostgresOperator(
+  task_id='execute_sql',
+  postgres_conn_id=postgres_conn_id,
+  sql=sql_query,
+  dag=dag,
+)
+
+# Log the output of the query to the Airflow console
+def log_query_output(**kwargs):
+  query_output = kwargs['ti'].xcom_pull(task_ids='execute_sql')
+  logging.info(query_output)
+
+execute_sql.on_success(log_query_output)
