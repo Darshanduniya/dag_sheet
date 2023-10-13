@@ -1,0 +1,67 @@
+import logging
+import psycopg2
+from airflow import DAG
+from airflow.providers.postgres.operators.postgres import PostgresOperator
+from airflow.operators.python_operator import PythonOperator
+from airflow.utils.dates import days_ago
+
+# Define the default_args for the DAG
+default_args = {
+    'owner': 'airflow',
+    'start_date': days_ago(1),
+    'retries': 1,
+}
+
+# Create the DAG instance
+dag = DAG(
+    'postgres_query_dag',
+    default_args=default_args,
+    schedule_interval=None,
+    catchup=False,
+)
+
+# Define a PostgreSQL connection ID from your Airflow Connections
+postgres_conn_id = 'your_postgres_connection_id'
+
+# Define a Python function to execute the query and print the result
+def execute_query_and_print_result(**context):
+    # Log that we are connecting to the database
+    logging.info("Connecting to the database")
+
+    # SQL query to select data from dag_run table
+    sql_query = "SELECT * FROM dag_run LIMIT 5;"
+
+    # Log that the query is being executed
+    logging.info("Executing query")
+
+    try:
+        # Connect to the PostgreSQL database
+        conn = psycopg2.connect(conn_id=postgres_conn_id)
+        cursor = conn.cursor()
+
+        # Execute the SQL query
+        cursor.execute(sql_query)
+
+        # Fetch the results
+        result = cursor.fetchall()
+
+        # Print the results in a table format
+        for row in result:
+            print("\t".join(str(col) for col in row))
+
+        # Close the cursor and connection
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        logging.error(f"Error executing the query: {str(e)}")
+
+# PythonOperator to execute the query and print the result
+execute_and_print = PythonOperator(
+    task_id='execute_and_print',
+    python_callable=execute_query_and_print_result,
+    provide_context=True,
+    dag=dag,
+)
+
+execute_and_print
