@@ -1,0 +1,7 @@
+        header_style = [{'selector': 'thead tr th', 'props': [('background-color', '#993366'), ('color', 'white')]}]
+
+        # Apply the style to the header row only
+        styled_df = df.style.set_table_styles(header_style).render()
+
+        # Add color to the header row only
+        email_content = f"Hi Team, <br>Please find the Today's load status:<br>{styled_df}<br><br>Thanks and Regards,<br>tkd Team 😊"
