@@ -1,0 +1,11 @@
+styles = [
+            {
+                'selector': 'thead th',
+                'props': [
+                    ('background-color', '#993366'),
+                    ('color', 'white'),
+                ]
+            }
+        ]
+        
+        email_content = f"Hi Team, <br>Please find the Today's load status:<br>{df.to_html(index=False, table_id='data', classes='table', escape=False, table_styles=styles)}<br><br>Thanks and Regards,<br>tkd Team 😊"
